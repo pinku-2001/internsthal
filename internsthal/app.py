@@ -58,22 +58,27 @@ def login():
 
         try:
             cursor.execute("""
-                SELECT * FROM Students
-                WHERE Email = :username AND StudentID = :password
-            """, {'username': username, 'password': password})
+                SELECT R.Username, R.Password, R.StudentID, S.Name
+                FROM StudentRegistrations R
+                JOIN Students S ON R.StudentID = S.StudentID
+                WHERE R.Username = :uname
+            """, {'uname': username})
 
             user = cursor.fetchone()
 
-            if user:
-                session['user'] = username
-                return redirect(url_for('home'))
+            if user and bcrypt.checkpw(password.encode('utf-8'), user[1].encode('utf-8')):
+                session['student_id'] = user[2]
+                session['username'] = user[0]
+                session['name'] = user[3]  # ✅ Store student's name
+                return redirect("/studenthome")
             else:
-                error = "Invalid login credentials."
-
+                error = "Invalid username or password."
         except Exception as e:
             error = f"Login failed: {str(e)}"
 
     return render_template('login.html', error=error)
+
+
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -86,29 +91,33 @@ def register():
         password = request.form['password']
 
         try:
-            # Check if StudentID exists in Students table
+            # 1. Check if StudentID exists in Students table
             cursor.execute("SELECT * FROM Students WHERE StudentID = :sid", {'sid': student_id})
             student = cursor.fetchone()
 
             if not student:
                 error = "Student ID not found. Please contact the administrator."
             else:
-                # Check if account already exists for that StudentID
-                cursor.execute("SELECT * FROM Users WHERE StudentID = :sid", {'sid': student_id})
+                # 2. Check if already registered
+                cursor.execute("SELECT * FROM StudentRegistrations WHERE StudentID = :sid", {'sid': student_id})
                 existing = cursor.fetchone()
 
                 if existing:
                     error = "An account already exists for this Student ID."
                 else:
-                    # Insert into Users table
+                    # 3. Hash the password
+                    hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+
+                    # 4. Insert into StudentRegistrations
                     cursor.execute("""
-                        INSERT INTO Users (UserID, StudentID, Username, Password)
-                        VALUES (Users_seq.NEXTVAL, :sid, :uname, :pwd)
+                        INSERT INTO StudentRegistrations (RegID, StudentID, Username, Password)
+                        VALUES (Reg_seq.NEXTVAL, :sid, :uname, :pwd)
                     """, {
                         'sid': student_id,
                         'uname': username,
-                        'pwd': password  # In production, hash this!
+                        'pwd': hashed_password.decode('utf-8')
                     })
+
                     conn.commit()
                     success = "Account created successfully! You can now log in."
 
@@ -116,6 +125,26 @@ def register():
             error = f"Registration failed: {str(e)}"
 
     return render_template('register.html', error=error, success=success)
+
+@app.route('/studenthome', methods=['GET', 'POST'])
+def studenthome():
+    return render_template("studentindex.html")
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
+
+@app.route('/dashboard')
+def dashboard():
+    if 'student_id' not in session:
+        return redirect(url_for('login'))
+
+    student_id = session['student_id']
+    return f"Welcome, Student {student_id}!"
+
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)
