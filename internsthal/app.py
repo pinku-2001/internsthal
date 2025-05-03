@@ -1,6 +1,7 @@
 from flask import Flask, render_template
 import oracledb
 import bcrypt
+from datetime import datetime
 
 
 from flask import Flask, render_template, request, redirect, url_for, session
@@ -466,40 +467,75 @@ def company_interviews():
     company_id = session['company_id']
 
     if request.method == 'POST':
-        app_id = request.form['application_id']
-        interview_date = request.form['interview_date']  # format: YYYY-MM-DD
-        mode = request.form['mode']
+        if 'schedule' in request.form:
+            app_id = request.form['application_id']
+            interview_dt = request.form['interview_datetime']
+            mode = request.form['mode']
 
-        try:
-            cursor.execute("""
-                INSERT INTO Interviews (
-                    InterviewID,
-                    ApplicationID,
-                    InterviewDate,
-                    InterviewMode
-                ) VALUES (
-                    Interview_seq.NEXTVAL,
-                    :app_id,
-                    TO_DATE(:int_date, 'YYYY-MM-DD'),
-                    :int_mode
-                )
-            """, {
-                'app_id': app_id,
-                'int_date': interview_date,
-                'int_mode': mode
-            })
-            conn.commit()
-        except Exception as e:
-            return f"Failed to schedule interview: {str(e)}", 500
+            try:
+                cursor.execute("""
+                    INSERT INTO Interviews (
+                        InterviewID,
+                        ApplicationID,
+                        InterviewDate,
+                        InterviewMode
+                    ) VALUES (
+                        Interview_seq.NEXTVAL,
+                        :app_id,
+                        TO_TIMESTAMP(:int_dt, 'YYYY-MM-DD"T"HH24:MI'),
+                        :int_mode
+                    )
+                """, {
+                    'app_id': app_id,
+                    'int_dt': interview_dt,
+                    'int_mode': mode
+                })
+                conn.commit()
+            except Exception as e:
+                return f"Failed to schedule interview: {str(e)}", 500
 
+        elif 'offer' in request.form:
+            app_id = request.form['application_id']
+            role = request.form['role']
+            salary = request.form['salary']
+            offer_date = datetime.now().strftime('%Y-%m-%d')
+
+            try:
+                cursor.execute("""
+                    INSERT INTO Offers (
+                        OfferID,
+                        ApplicationID,
+                        OfferDate,
+                        Salary,
+                        Role
+                    ) VALUES (
+                        Offer_seq.NEXTVAL,
+                        :app_id,
+                        TO_DATE(:odate, 'YYYY-MM-DD'),
+                        :salary,
+                        :role
+                    )
+                """, {
+                    'app_id': app_id,
+                    'odate': offer_date,
+                    'salary': salary,
+                    'role': role
+                })
+                conn.commit()
+            except Exception as e:
+                return f"Failed to send offer: {str(e)}", 500
+
+    # Fetch data for display
     cursor.execute("""
         SELECT A.ApplicationID, S.StudentID, S.Name, J.Title, A.ApplyDate,
-               TO_CHAR(I.InterviewDate, 'YYYY-MM-DD') AS InterviewDate,
-               I.InterviewMode
+               TO_CHAR(I.InterviewDate, 'YYYY-MM-DD HH24:MI') AS InterviewDate,
+               I.InterviewMode,
+               O.OfferID
         FROM Applications A
         JOIN Students S ON A.StudentID = S.StudentID
         JOIN JobPostings J ON A.JobID = J.JobID
         LEFT JOIN Interviews I ON A.ApplicationID = I.ApplicationID
+        LEFT JOIN Offers O ON A.ApplicationID = O.ApplicationID
         WHERE A.Status = 'Accepted' AND J.CompanyID = :cid
         ORDER BY A.ApplyDate DESC
     """, {'cid': company_id})
@@ -542,6 +578,176 @@ def student_interviews():
     except Exception as e:
         return f"Error fetching interviews: {str(e)}", 500
 
+@app.route('/company_offers')
+def company_offers():
+    if 'company_id' not in session:
+        return redirect(url_for('company_login'))
+
+    company_id = session['company_id']
+
+    cursor.execute("""
+        SELECT O.OfferID, S.StudentID, S.Name, J.Title, O.OfferDate, O.Salary, O.Role
+        FROM Offers O
+        JOIN Applications A ON O.ApplicationID = A.ApplicationID
+        JOIN Students S ON A.StudentID = S.StudentID
+        JOIN JobPostings J ON A.JobID = J.JobID
+        WHERE J.CompanyID = :cid
+        ORDER BY O.OfferDate DESC
+    """, {'cid': company_id})
+
+    rows = cursor.fetchall()
+    cols = [desc[0] for desc in cursor.description]
+
+    return render_template('company_offers.html', rows=rows, cols=cols)
+
+@app.route('/company_post_job', methods=['GET', 'POST'])
+def post_job():
+    if 'company_id' not in session:
+        return redirect(url_for('company_login'))
+
+    message = None
+
+    if request.method == 'POST':
+        title = request.form['title']
+        description = request.form['description']
+        deadline = request.form['deadline']
+        salary = request.form['salary']
+        location = request.form['location']
+
+        try:
+            cursor.execute("""
+                INSERT INTO JobPostings (
+                    JobID, CompanyID, Title, Description, Deadline, Salary, Location
+                ) VALUES (
+                    JobPostings_seq.NEXTVAL,
+                    :company_id, :job_title, :job_description,
+                    TO_DATE(:job_deadline, 'YYYY-MM-DD'),
+                    :job_salary, :job_location
+                )
+            """, {
+                'company_id': session['company_id'],
+                'job_title': title,
+                'job_description': description,
+                'job_deadline': deadline,
+                'job_salary': salary,
+                'job_location': location
+            })
+            conn.commit()
+            message = "Job posted successfully!"
+        except Exception as e:
+            conn.rollback()
+            message = f"Error: {e}"
+
+    return render_template('post_job.html', message=message)
+
+@app.route('/company_jobs')
+def company_jobs():
+    if 'company_id' not in session:
+        return redirect(url_for('company_login'))
+
+    company_id = session['company_id']
+
+    try:
+        cursor.execute("""
+            SELECT JobID, Title, Description, TO_CHAR(Deadline, 'YYYY-MM-DD') AS Deadline, Salary, Location
+            FROM JobPostings
+            WHERE CompanyID = :cid
+            ORDER BY Deadline DESC
+        """, {'cid': company_id})
+
+        jobs = cursor.fetchall()
+        columns = [desc[0] for desc in cursor.description]
+
+        return render_template('company_jobs.html', jobs=jobs, columns=columns)
+
+    except Exception as e:
+        return f"Error loading job postings: {e}", 500
+    
+@app.route('/student_offers')
+def student_offers():
+    if 'student_id' not in session:
+        return redirect(url_for('login'))
+
+    student_id = session['student_id']
+
+    cursor.execute("""
+        SELECT O.OfferID, C.Name AS CompanyName, J.Title AS JobTitle,
+               TO_CHAR(O.OfferDate, 'YYYY-MM-DD') AS OfferDate,
+               O.Salary, O.Role
+        FROM Offers O
+        JOIN Applications A ON O.ApplicationID = A.ApplicationID
+        JOIN JobPostings J ON A.JobID = J.JobID
+        JOIN Companies C ON J.CompanyID = C.CompanyID
+        WHERE A.StudentID = :sid
+        ORDER BY O.OfferDate DESC
+    """, {'sid': student_id})
+
+    rows = cursor.fetchall()
+    columns = [desc[0] for desc in cursor.description]
+
+    return render_template('student_offers.html', rows=rows, columns=columns)
+
+@app.route('/student_feedback', methods=['GET', 'POST'])
+def student_feedback():
+    if 'student_id' not in session:
+        return redirect(url_for('login'))
+
+    student_id = session['student_id']
+    message = None
+
+    if request.method == 'POST':
+        application_id = request.form['application_id']
+        comments = request.form['comments']
+
+        try:
+            cursor.execute("""
+                INSERT INTO Feedback (
+                    FeedbackID, ApplicationID, FromType, Comments, FeedbackDate
+                ) VALUES (
+                    Feedback_seq.NEXTVAL, :app_id, 'Student', :comments, SYSDATE
+                )
+            """, {
+                'app_id': application_id,
+                'comments': comments
+            })
+            conn.commit()
+            message = "Feedback submitted successfully!"
+        except Exception as e:
+            message = f"Error submitting feedback: {e}"
+
+    # Fetch student’s applications
+    cursor.execute("""
+        SELECT A.ApplicationID, J.Title
+        FROM Applications A
+        JOIN JobPostings J ON A.JobID = J.JobID
+        WHERE A.StudentID = :sid
+    """, {'sid': student_id})
+    applications = cursor.fetchall()
+
+    return render_template('student_feedback.html', applications=applications, message=message)
+
+@app.route('/company_feedback')
+def company_feedback():
+    if 'company_id' not in session:
+        return redirect(url_for('company_login'))
+
+    company_id = session['company_id']
+
+    cursor.execute("""
+        SELECT F.FeedbackID, S.StudentID, S.Name, J.Title, F.Comments, 
+               TO_CHAR(F.FeedbackDate, 'YYYY-MM-DD') AS FeedbackDate
+        FROM Feedback F
+        JOIN Applications A ON F.ApplicationID = A.ApplicationID
+        JOIN Students S ON A.StudentID = S.StudentID
+        JOIN JobPostings J ON A.JobID = J.JobID
+        WHERE F.FromType = 'Student' AND J.CompanyID = :cid
+        ORDER BY F.FeedbackDate DESC
+    """, {'cid': company_id})
+
+    feedbacks = cursor.fetchall()
+    columns = [desc[0] for desc in cursor.description]
+
+    return render_template('company_feedback.html', feedbacks=feedbacks, columns=columns)
 
 if __name__ == '__main__':
     app.run(debug=True)

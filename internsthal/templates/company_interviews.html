@@ -2,114 +2,75 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Schedule Interviews</title>
+    <title>Company Interview & Offer Management</title>
     <style>
-        body {
-            font-family: 'Segoe UI', sans-serif;
-            background-color: #f1f5f9;
-            padding: 2rem;
-        }
-
-        h2 {
-            color: #1e3a8a;
-            text-align: center;
-            margin-bottom: 1.5rem;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background-color: white;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
-        }
-
-        th, td {
-            padding: 1rem;
-            border: 1px solid #ccc;
-            text-align: left;
-        }
-
-        th {
-            background-color: #3b82f6;
-            color: white;
-        }
-
-        tr:nth-child(even) {
-            background-color: #f9fafb;
-        }
-
-        input, select, button {
-            padding: 0.5rem;
-            margin-top: 0.4rem;
-            font-size: 0.9rem;
-        }
-
-        button {
-            background-color: #2563eb;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        .back-link {
-            display: block;
-            margin-top: 1rem;
-            text-align: center;
-            color: #1e3a8a;
-            font-weight: bold;
-            text-decoration: none;
-        }
-
-        .back-link:hover {
-            text-decoration: underline;
-        }
-
-        .scheduled {
-            color: green;
-            font-weight: bold;
-        }
+        body { font-family: 'Segoe UI', sans-serif; background: #f1f5f9; padding: 2rem; }
+        table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 0 10px rgba(0,0,0,0.05); }
+        th, td { padding: 1rem; border: 1px solid #ccc; text-align: left; }
+        th { background: #3b82f6; color: white; }
+        tr:nth-child(even) { background: #f9fafb; }
+        input, select, button { padding: 0.5rem; margin-top: 0.4rem; font-size: 0.9rem; }
+        button { background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .back-link { display: block; margin-top: 1rem; text-align: center; color: #1e3a8a; font-weight: bold; text-decoration: none; }
+        .back-link:hover { text-decoration: underline; }
+        .scheduled { color: green; font-weight: bold; }
+        .offered { color: darkorange; font-weight: bold; }
     </style>
 </head>
 <body>
-    <h2>Schedule Interviews for Accepted Applications</h2>
+    <h2>Schedule Interviews and Send Offers</h2>
 
     {% if rows %}
-        <table>
-            <thead>
-                <tr>
-                    {% for col in cols %}
-                        <th>{{ col }}</th>
-                    {% endfor %}
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in rows %}
-                    <tr>
-                        {% for cell in row %}
-                            <td>{{ cell if cell else 'Not Scheduled' }}</td>
-                        {% endfor %}
-                        <td>
-                            {% if not row[5] %}
-                                <form method="POST">
-                                    <input type="hidden" name="application_id" value="{{ row[0] }}">
-                                    <input type="date" name="interview_date" required>
-                                    <select name="mode" required>
-                                        <option value="Online">Online</option>
-                                        <option value="In-Person">In-Person</option>
-                                        <option value="Phone">Phone</option>
-                                    </select><br><br>
-                                    <button type="submit">Schedule</button>
-                                </form>
-                            {% else %}
-                                <span class="scheduled">Scheduled</span>
-                            {% endif %}
-                        </td>
-                    </tr>
+    <table>
+        <thead>
+            <tr>
+                {% for col in cols %}
+                    <th>{{ col }}</th>
                 {% endfor %}
-            </tbody>
-        </table>
+                <th>Interview</th>
+                <th>Offer</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+                <tr>
+                    {% for cell in row %}
+                        <td>{{ cell if cell else '—' }}</td>
+                    {% endfor %}
+                    <td>
+                        {% if not row[5] %}
+                            <form method="POST">
+                                <input type="hidden" name="application_id" value="{{ row[0] }}">
+                                <input type="datetime-local" name="interview_datetime" required>
+                                <select name="mode" required>
+                                    <option value="Online">Online</option>
+                                    <option value="In-Person">In-Person</option>
+                                    <option value="Phone">Phone</option>
+                                </select>
+                                <button type="submit" name="schedule">Schedule</button>
+                            </form>
+                        {% else %}
+                            <span class="scheduled">Scheduled</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if row[5] and not row[7] %}
+                            <form method="POST">
+                                <input type="hidden" name="application_id" value="{{ row[0] }}">
+                                <input type="text" name="role" placeholder="Role" required>
+                                <input type="number" step="0.01" name="salary" placeholder="Salary" required>
+                                <button type="submit" name="offer">Send Offer</button>
+                            </form>
+                        {% elif row[7] %}
+                            <span class="offered">Offer Sent</span>
+                        {% else %}
+                            <span>—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
     {% else %}
         <p style="text-align:center;">No accepted applications found.</p>
     {% endif %}

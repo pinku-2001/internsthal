@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Your Job Postings</title>
+    <style>
+        body {
+            background-color: #f1f5f9;
+            font-family: 'Segoe UI', sans-serif;
+            padding: 2rem;
+        }
+
+        h2 {
+            text-align: center;
+            color: #1e3a8a;
+            margin-bottom: 1.5rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.05);
+        }
+
+        th, td {
+            padding: 1rem;
+            border: 1px solid #ccc;
+            text-align: left;
+        }
+
+        th {
+            background-color: #3b82f6;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9fafb;
+        }
+
+        .back-link {
+            display: block;
+            margin-top: 1rem;
+            text-align: center;
+            font-weight: bold;
+            color: #1e3a8a;
+            text-decoration: none;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <h2>Your Posted Jobs</h2>
+
+    {% if jobs %}
+        <table>
+            <thead>
+                <tr>
+                    {% for col in columns %}
+                        <th>{{ col }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for job in jobs %}
+                    <tr>
+                        {% for field in job %}
+                            <td>{{ field }}</td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p style="text-align:center;">You haven’t posted any jobs yet.</p>
+    {% endif %}
+
+    <a href="{{ url_for('companyhome') }}" class="back-link">← Back to Home</a>
+</body>
+</html>
