@@ -34,19 +34,35 @@ def home():
     return render_template("index.html", tables=tables)
 
 
-@app.route('/companies')
+@app.route('/companies', methods=['GET', 'POST'])
 def companies():
-    if not conn:
-        return "Database not connected", 500
+    if 'student_id' not in session:
+        return redirect(url_for('login'))
+
+    search_query = request.form.get('search') if request.method == 'POST' else None
 
     try:
-        cursor.execute("SELECT CompanyID, Name, ContactPerson, Email FROM Companies ORDER BY CompanyID")
-        rows = cursor.fetchall()
-        # Fetch column names too (optional for table headers)
+        if search_query:
+            cursor.execute("""
+                SELECT CompanyID, Name, ContactPerson, Email 
+                FROM Companies 
+                WHERE LOWER(Name) LIKE :search
+                ORDER BY CompanyID
+            """, {'search': f"%{search_query.lower()}%"})
+        else:
+            cursor.execute("""
+                SELECT CompanyID, Name, ContactPerson, Email 
+                FROM Companies 
+                ORDER BY CompanyID
+            """)
+        
+        companies = cursor.fetchall()
         columns = [col[0] for col in cursor.description]
-        return render_template("companies.html", companies=rows, columns=columns)
+        return render_template('companies.html', companies=companies, columns=columns, search=search_query)
+
     except Exception as e:
         return f"Error fetching companies: {str(e)}", 500
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -144,6 +160,88 @@ def dashboard():
     return f"Welcome, Student {student_id}!"
 
 
+@app.route('/jobs', methods=['GET', 'POST'])
+def jobs():
+    if 'student_id' not in session:
+        return redirect(url_for('login'))
+
+    search_query = request.form.get('search') if request.method == 'POST' else None
+
+    try:
+        if search_query:
+            cursor.execute("""
+                SELECT J.JobID, C.Name AS Company, J.Title, J.Description, J.Deadline, J.Salary, J.Location
+                FROM JobPostings J
+                JOIN Companies C ON J.CompanyID = C.CompanyID
+                WHERE LOWER(J.Title) LIKE :query OR LOWER(J.Location) LIKE :query
+                ORDER BY J.Deadline
+            """, {'query': f"%{search_query.lower()}%"})
+        else:
+            cursor.execute("""
+                SELECT J.JobID, C.Name AS Company, J.Title, J.Description, J.Deadline, J.Salary, J.Location
+                FROM JobPostings J
+                JOIN Companies C ON J.CompanyID = C.CompanyID
+                ORDER BY J.Deadline
+            """)
+
+        jobs = cursor.fetchall()
+        columns = [col[0] for col in cursor.description]
+        return render_template('jobs.html', jobs=jobs, columns=columns, search=search_query)
+
+    except Exception as e:
+        return f"Error fetching job postings: {str(e)}", 500
+
+@app.route('/apply/<int:job_id>', methods=['POST'])
+def apply(job_id):
+    if 'student_id' not in session:
+        return redirect(url_for('login'))
+
+    try:
+        student_id = session['student_id']
+
+        # Optional: Prevent duplicate applications
+        cursor.execute("""
+            SELECT * FROM Applications 
+            WHERE StudentID = :sid AND JobID = :jid
+        """, {'sid': student_id, 'jid': job_id})
+
+        if cursor.fetchone():
+            return "You have already applied for this job.", 400
+
+        # Insert application with default status and current date
+        cursor.execute("""
+            INSERT INTO Applications (ApplicationID, StudentID, JobID, ApplyDate, Status)
+            VALUES (App_seq.NEXTVAL, :sid, :jid, SYSDATE, 'Pending')
+        """, {'sid': student_id, 'jid': job_id})
+
+        conn.commit()
+        return redirect(url_for('jobs'))
+
+    except Exception as e:
+        return f"Failed to apply: {str(e)}", 500
+
+@app.route('/applications')
+def applications():
+    if 'student_id' not in session:
+        return redirect(url_for('login'))
+
+    try:
+        student_id = session['student_id']
+
+        cursor.execute("""
+            SELECT J.Title, C.Name, A.Status, TO_CHAR(A.ApplyDate, 'YYYY-MM-DD')
+            FROM Applications A
+            JOIN JobPostings J ON A.JobID = J.JobID
+            JOIN Companies C ON J.CompanyID = C.CompanyID
+            WHERE A.StudentID = :sid
+            ORDER BY A.ApplyDate DESC
+        """, {'sid': student_id})
+
+        applications = cursor.fetchall()
+        return render_template('applications.html', applications=applications)
+
+    except Exception as e:
+        return f"Error retrieving applications: {str(e)}", 500
 
 
 if __name__ == '__main__':

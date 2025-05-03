@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>My Applications - Internsthal</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #f1f5f9;
+            padding: 2rem;
+        }
+
+        h2 {
+            color: #1e3a8a;
+            margin-bottom: 1.5rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        th, td {
+            padding: 1rem;
+            border: 1px solid #ccc;
+            text-align: left;
+        }
+
+        th {
+            background-color: #3b82f6;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9fafb;
+        }
+
+        .back-link {
+            margin-top: 1rem;
+            display: inline-block;
+            color: #1e3a8a;
+            text-decoration: none;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>My Applications</h2>
+
+    {% if applications %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Job Title</th>
+                    <th>Company</th>
+                    <th>Status</th>
+                    <th>Applied On</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for app in applications %}
+                    <tr>
+                        <td>{{ app[0] }}</td>  <!-- Job Title -->
+                        <td>{{ app[1] }}</td>  <!-- Company Name -->
+                        <td>{{ app[2] }}</td>  <!-- Status -->
+                        <td>{{ app[3] }}</td>  <!-- ApplyDate -->
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>You haven't applied for any jobs yet.</p>
+    {% endif %}
+
+    <a href="{{ url_for('studenthome') }}" class="back-link">← Back to Home</a>
+
+</body>
+</html>
