@@ -2,8 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Internsthal - Home</title>
-    
+    <title>Internsthal - Company Home</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         :root {
@@ -38,6 +37,7 @@
             justify-content: center;
             background-color: var(--secondary-color);
             padding: 0.75rem 1rem;
+            flex-wrap: wrap;
         }
 
         nav a {
@@ -49,6 +49,39 @@
 
         nav a:hover {
             text-decoration: underline;
+        }
+
+        .dropdown {
+            position: relative;
+        }
+
+        .dropdown > a {
+            cursor: pointer;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: white;
+            min-width: 160px;
+            z-index: 1;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .dropdown-content a {
+            color: var(--text-color);
+            padding: 0.75rem 1rem;
+            display: block;
+            text-decoration: none;
+            font-weight: normal;
+        }
+
+        .dropdown-content a:hover {
+            background-color: #e2e8f0;
+        }
+
+        .dropdown:hover .dropdown-content {
+            display: block;
         }
 
         main {
@@ -89,8 +122,14 @@
                 flex-direction: column;
             }
 
-            nav a {
-                margin: 0.5rem 0;
+            .dropdown-content {
+                position: static;
+                box-shadow: none;
+                width: 100%;
+            }
+
+            .dropdown-content a {
+                padding: 0.5rem;
             }
         }
     </style>
@@ -98,34 +137,30 @@
 <body>
     <header>
         <h1>Internsthal</h1>
-        <p>Your Gateway to Internships & Jobs</p>
     </header>
 
     <nav>
-       
-       
-
-        
-    </nav>
-    <nav>
-       
-        <a href="/companies">Companies</a>
-        <a href="/jobs">Jobs</a>
-        <a href="/applications">Applications</a>
-        <a href="/student_interviews">Interviews</a>
+        <div class="dropdown">
+            <a href="#">Jobs ▾</a>
+            <div class="dropdown-content">
+                <a href="/post_job">Post Job</a>
+                <a href="/view_jobs">Posted Jobs</a>
+            </div>
+        </div>
+        <a href="/company_applications">Applications</a>
+        <a href="/company_interviews">Interviews</a>
         <a href="/offers">Offers</a>
         <a href="/feedback">Feedback</a>
         <a href="/logout">Logout</a>
     </nav>
+
     <main>
         <div class="hero">
-
-           
-            <h2>Welcome {{ session.name }}!</h2>
-            <p>Internsthal helps students connect with companies to find internships and job opportunities. 
-            Explore job postings, submit applications, track your interviews, and receive offers—all in one place!</p>
+            <h2>Welcome {{ session.company_name }}!</h2>
+            <p>Manage your job postings and view applications easily from your dashboard.</p>
         </div>
     </main>
+
     <footer>
         &copy; 2025 Internsthal. All rights reserved.
     </footer>

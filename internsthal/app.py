@@ -85,7 +85,7 @@ def login():
             if user and bcrypt.checkpw(password.encode('utf-8'), user[1].encode('utf-8')):
                 session['student_id'] = user[2]
                 session['username'] = user[0]
-                session['name'] = user[3]  # ✅ Store student's name
+                session['name'] = user[3] 
                 return redirect("/studenthome")
             else:
                 error = "Invalid username or password."
@@ -165,9 +165,15 @@ def jobs():
     if 'student_id' not in session:
         return redirect(url_for('login'))
 
+    student_id = session['student_id']
     search_query = request.form.get('search') if request.method == 'POST' else None
 
     try:
+        # Fetch applied job IDs
+        cursor.execute("SELECT JobID FROM Applications WHERE StudentID = :sid", {'sid': student_id})
+        applied_jobs = {row[0] for row in cursor.fetchall()}
+
+        # Get job listings with company info
         if search_query:
             cursor.execute("""
                 SELECT J.JobID, C.Name AS Company, J.Title, J.Description, J.Deadline, J.Salary, J.Location
@@ -186,10 +192,12 @@ def jobs():
 
         jobs = cursor.fetchall()
         columns = [col[0] for col in cursor.description]
-        return render_template('jobs.html', jobs=jobs, columns=columns, search=search_query)
+
+        return render_template('jobs.html', jobs=jobs, columns=columns, search=search_query, applied_jobs=applied_jobs)
 
     except Exception as e:
-        return f"Error fetching job postings: {str(e)}", 500
+        return f"Error fetching jobs: {str(e)}", 500
+
 
 @app.route('/apply/<int:job_id>', methods=['POST'])
 def apply(job_id):
@@ -242,6 +250,297 @@ def applications():
 
     except Exception as e:
         return f"Error retrieving applications: {str(e)}", 500
+
+@app.route('/admin_login', methods=['GET', 'POST'])
+def admin_login():
+    error = None
+
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+
+        try:
+            cursor.execute("""
+                SELECT AdminID, Name FROM Admins
+                WHERE Username = :uname AND Password = :pwd
+            """, {'uname': username, 'pwd': password})
+
+            admin = cursor.fetchone()
+
+            if admin:
+                session['admin_id'] = admin[0]
+                session['admin_name'] = admin[1]
+                return redirect(url_for('adminhome'))  # or home
+            else:
+                error = "Invalid admin credentials."
+
+        except Exception as e:
+            error = f"Login failed: {str(e)}"
+
+    return render_template('admin_login.html', error=error)
+
+@app.route('/adminhome', methods=['GET', 'POST'])
+def adminhome():
+    return render_template("adminindex.html")
+
+@app.route('/add_student', methods=['GET', 'POST'])
+def add_student():
+    if 'admin_id' not in session:
+        return redirect(url_for('admin_login'))
+
+    success = None
+    error = None
+
+    if request.method == 'POST':
+        try:
+            student_id = int(request.form['student_id'])
+            name = request.form['name']
+            email = request.form['email']
+            gpa = float(request.form['gpa'])
+            program_id = int(request.form['program_id'])
+            grad_year = int(request.form['grad_year'])
+
+            cursor.execute("""
+                INSERT INTO Students (StudentID, Name, GPA, Email, ProgramID, GradYear)
+                VALUES (:sid, :name, :gpa, :email, :pid, :grad)
+            """, {
+                'sid': student_id,
+                'name': name,
+                'gpa': gpa,
+                'email': email,
+                'pid': program_id,
+                'grad': grad_year
+            })
+
+            conn.commit()
+            success = f"Student {name} (ID: {student_id}) added successfully."
+
+        except Exception as e:
+            error = f"Error adding student: {str(e)}"
+
+    return render_template('add_student.html', success=success, error=error)
+
+@app.route('/show_students')
+def show_students():
+    if 'admin_id' not in session:
+        return redirect(url_for('admin_login'))
+
+    try:
+        cursor.execute("""
+            SELECT StudentID, Name, Email, GPA, ProgramID, GradYear
+            FROM Students
+            ORDER BY StudentID
+        """)
+        students = cursor.fetchall()
+        columns = [col[0] for col in cursor.description]
+        return render_template('show_students.html', students=students, columns=columns)
+    except Exception as e:
+        return f"Error fetching students: {str(e)}", 500
+
+@app.route('/add_company', methods=['GET', 'POST'])
+def add_company():
+    if 'admin_id' not in session:
+        return redirect(url_for('admin_login'))
+
+    success = None
+    error = None
+
+    if request.method == 'POST':
+        try:
+            name = request.form['name']
+            contact_person = request.form['contact_person']
+            email = request.form['email']
+
+            cursor.execute("""
+                INSERT INTO Companies (CompanyID, Name, ContactPerson, Email)
+                VALUES (Company_seq.NEXTVAL, :name, :cperson, :email)
+            """, {
+                'name': name,
+                'cperson': contact_person,
+                'email': email
+            })
+
+            conn.commit()
+            success = f"Company '{name}' added successfully."
+
+        except Exception as e:
+            error = f"Error adding company: {str(e)}"
+
+    return render_template('add_company.html', success=success, error=error)
+
+
+@app.route('/admincompanies')
+def admincompanies():
+    if 'admin_id' not in session:
+        return redirect(url_for('admin_login'))
+
+    try:
+        cursor.execute("""
+            SELECT CompanyID, Name, ContactPerson, Email FROM Companies ORDER BY CompanyID
+        """)
+        companies = cursor.fetchall()
+        columns = [col[0] for col in cursor.description]
+
+        return render_template('show_companies.html', companies=companies, columns=columns)
+    except Exception as e:
+        return f"Error fetching companies: {str(e)}", 500
+
+@app.route('/company_login', methods=['GET', 'POST'])
+def company_login():
+    error = None
+
+    if request.method == 'POST':
+        company_id = request.form['company_id']
+        email = request.form['email']
+
+        try:
+            cursor.execute("""
+                SELECT CompanyID, Name FROM Companies
+                WHERE CompanyID = :cid AND Email = :email
+            """, {'cid': company_id, 'email': email})
+
+            company = cursor.fetchone()
+
+            if company:
+                session['company_id'] = company[0]
+                session['company_name'] = company[1]
+                session['role'] = 'company'
+                return redirect(url_for('companyhome'))  # or 'company_dashboard' if you create one
+            else:
+                error = "Invalid Company ID or Email."
+
+        except Exception as e:
+            error = f"Login failed: {str(e)}"
+
+    return render_template('company_login.html', error=error)
+
+@app.route('/companyhome', methods=['GET', 'POST'])
+def companyhome():
+    return render_template("companyhome.html")
+
+@app.route('/company_applications', methods=['GET', 'POST'])
+def company_applications():
+    if 'company_id' not in session:
+        return redirect(url_for('company_login'))
+
+    company_id = session['company_id']
+
+    if request.method == 'POST':
+        application_id = request.form.get('application_id')
+        action = request.form.get('action')
+
+        if action in ['Accepted', 'Rejected']:
+            try:
+                cursor.execute("""
+                    UPDATE Applications
+                    SET Status = :status
+                    WHERE ApplicationID = :appid
+                """, {'status': action, 'appid': application_id})
+                conn.commit()
+            except Exception as e:
+                return f"Error updating application: {str(e)}", 500
+
+    try:
+        cursor.execute("""
+            SELECT A.ApplicationID, S.StudentID, S.Name, S.Email, J.Title, A.ApplyDate, A.Status
+            FROM Applications A
+            JOIN Students S ON A.StudentID = S.StudentID
+            JOIN JobPostings J ON A.JobID = J.JobID
+            WHERE J.CompanyID = :cid
+            ORDER BY A.ApplyDate DESC
+        """, {'cid': company_id})
+
+        applications = cursor.fetchall()
+        columns = [col[0] for col in cursor.description]
+
+        return render_template("company_applications.html", applications=applications, columns=columns)
+
+    except Exception as e:
+        return f"Error loading applications: {str(e)}", 500
+    
+@app.route('/company_interviews', methods=['GET', 'POST'])
+def company_interviews():
+    if 'company_id' not in session:
+        return redirect(url_for('company_login'))
+
+    company_id = session['company_id']
+
+    if request.method == 'POST':
+        app_id = request.form['application_id']
+        interview_date = request.form['interview_date']  # format: YYYY-MM-DD
+        mode = request.form['mode']
+
+        try:
+            cursor.execute("""
+                INSERT INTO Interviews (
+                    InterviewID,
+                    ApplicationID,
+                    InterviewDate,
+                    InterviewMode
+                ) VALUES (
+                    Interview_seq.NEXTVAL,
+                    :app_id,
+                    TO_DATE(:int_date, 'YYYY-MM-DD'),
+                    :int_mode
+                )
+            """, {
+                'app_id': app_id,
+                'int_date': interview_date,
+                'int_mode': mode
+            })
+            conn.commit()
+        except Exception as e:
+            return f"Failed to schedule interview: {str(e)}", 500
+
+    cursor.execute("""
+        SELECT A.ApplicationID, S.StudentID, S.Name, J.Title, A.ApplyDate,
+               TO_CHAR(I.InterviewDate, 'YYYY-MM-DD') AS InterviewDate,
+               I.InterviewMode
+        FROM Applications A
+        JOIN Students S ON A.StudentID = S.StudentID
+        JOIN JobPostings J ON A.JobID = J.JobID
+        LEFT JOIN Interviews I ON A.ApplicationID = I.ApplicationID
+        WHERE A.Status = 'Accepted' AND J.CompanyID = :cid
+        ORDER BY A.ApplyDate DESC
+    """, {'cid': company_id})
+
+    rows = cursor.fetchall()
+    cols = [desc[0] for desc in cursor.description]
+
+    return render_template('company_interviews.html', rows=rows, cols=cols)
+
+
+
+
+
+@app.route('/student_interviews')
+def student_interviews():
+    if 'student_id' not in session:
+        return redirect(url_for('login'))
+
+    student_id = session['student_id']
+
+    try:
+        cursor.execute("""
+            SELECT I.InterviewDate,
+                   I.InterviewMode,
+                   J.Title AS JobTitle,
+                   C.Name AS CompanyName
+            FROM Interviews I
+            JOIN Applications A ON I.ApplicationID = A.ApplicationID
+            JOIN JobPostings J ON A.JobID = J.JobID
+            JOIN Companies C ON J.CompanyID = C.CompanyID
+            WHERE A.StudentID = :sid
+            ORDER BY I.InterviewDate ASC
+        """, {'sid': student_id})
+
+        interviews = cursor.fetchall()
+        columns = [col[0] for col in cursor.description]
+
+        return render_template('student_interviews.html', interviews=interviews, columns=columns)
+
+    except Exception as e:
+        return f"Error fetching interviews: {str(e)}", 500
 
 
 if __name__ == '__main__':

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Login - Internsthal</title>
+    <title>Company Login - Internsthal</title>
     <style>
         body {
             background-color: #f1f5f9;
@@ -25,10 +25,10 @@
         h2 {
             margin-bottom: 1.5rem;
             color: #1e3a8a;
+            text-align: center;
         }
 
-        input[type="text"],
-        input[type="password"] {
+        input {
             width: 100%;
             padding: 0.75rem;
             margin-bottom: 1rem;
@@ -50,46 +50,43 @@
         .error {
             color: red;
             margin-bottom: 1rem;
+            text-align: center;
         }
 
-        .links {
+        .back-link {
             text-align: center;
             margin-top: 1rem;
         }
 
-        .links a {
-            display: block;
-            margin-top: 0.5rem;
+        .back-link a {
             color: #1e3a8a;
             text-decoration: none;
         }
 
-        .links a:hover {
+        .back-link a:hover {
             text-decoration: underline;
         }
     </style>
 </head>
 <body>
+
     <div class="login-container">
-        <h2>Student Login</h2>
+        <h2>Company Login</h2>
 
         {% if error %}
             <div class="error">{{ error }}</div>
         {% endif %}
 
         <form method="POST">
-            <input type="text" name="username" placeholder="Username" required>
-            <input type="password" name="password" placeholder="Password" required>
+            <input type="number" name="company_id" placeholder="Company ID" required>
+            <input type="email" name="email" placeholder="Email" required>
             <button type="submit">Log In</button>
         </form>
 
-        <div class="links">
-            <a href="{{ url_for('register') }}">New Student? Register here</a>
-            <a href="{{ url_for ('company_login')}}">Company Login</a>
-            <a href="{{ url_for('admin_login') }}">Admin Login</a>
-
-            <a href="{{ url_for('home') }}">← Back to Home</a>
+        <div class="back-link">
+            <a href="{{ url_for('login') }}">← Back to Student Login</a>
         </div>
     </div>
+
 </body>
 </html>

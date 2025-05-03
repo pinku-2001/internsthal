@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Login - Internsthal</title>
+    <title>Add Student - Admin</title>
     <style>
         body {
             background-color: #f1f5f9;
@@ -10,25 +10,25 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            padding: 2rem;
+            flex-direction: column;
         }
 
-        .login-container {
+        .form-container {
             background-color: white;
             padding: 2rem 3rem;
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             width: 100%;
-            max-width: 400px;
+            max-width: 500px;
         }
 
         h2 {
-            margin-bottom: 1.5rem;
+            margin-bottom: 1rem;
             color: #1e3a8a;
         }
 
-        input[type="text"],
-        input[type="password"] {
+        input, select {
             width: 100%;
             padding: 0.75rem;
             margin-bottom: 1rem;
@@ -47,49 +47,57 @@
             cursor: pointer;
         }
 
+        .message {
+            margin-bottom: 1rem;
+            color: green;
+        }
+
         .error {
             color: red;
-            margin-bottom: 1rem;
         }
 
-        .links {
-            text-align: center;
+        .back-link {
             margin-top: 1rem;
+            display: inline-block;
+            text-align: center;
         }
 
-        .links a {
-            display: block;
-            margin-top: 0.5rem;
+        .back-link a {
             color: #1e3a8a;
             text-decoration: none;
+            font-weight: bold;
         }
 
-        .links a:hover {
+        .back-link a:hover {
             text-decoration: underline;
         }
     </style>
 </head>
 <body>
-    <div class="login-container">
-        <h2>Student Login</h2>
+    <div class="form-container">
+        <h2>Add New Student</h2>
 
+        {% if success %}
+            <div class="message">{{ success }}</div>
+        {% endif %}
         {% if error %}
             <div class="error">{{ error }}</div>
         {% endif %}
 
         <form method="POST">
-            <input type="text" name="username" placeholder="Username" required>
-            <input type="password" name="password" placeholder="Password" required>
-            <button type="submit">Log In</button>
+            <input type="number" name="student_id" placeholder="Student ID (e.g., 19001)" required>
+            <input type="text" name="name" placeholder="Student Name" required>
+            <input type="email" name="email" placeholder="Email" required>
+            <input type="number" name="gpa" step="0.01" min="0" max="4" placeholder="GPA" required>
+            <input type="number" name="program_id" placeholder="Program ID" required>
+            <input type="number" name="grad_year" placeholder="Graduation Year" required>
+            <button type="submit">Add Student</button>
         </form>
+    </div>
 
-        <div class="links">
-            <a href="{{ url_for('register') }}">New Student? Register here</a>
-            <a href="{{ url_for ('company_login')}}">Company Login</a>
-            <a href="{{ url_for('admin_login') }}">Admin Login</a>
-
-            <a href="{{ url_for('home') }}">← Back to Home</a>
-        </div>
+    <!-- ✅ Go to Home link -->
+    <div class="back-link">
+        <a href="{{ url_for('adminhome') }}">← Go to Home</a>
     </div>
 </body>
 </html>

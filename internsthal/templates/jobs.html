@@ -57,9 +57,14 @@
             background-color: #f9fafb;
         }
 
+        .applied-label {
+            color: gray;
+            font-weight: bold;
+        }
+
         .back-link {
-            display: inline-block;
             margin-top: 1rem;
+            display: inline-block;
             color: #1e3a8a;
             text-decoration: none;
         }
@@ -95,9 +100,13 @@
                             <td>{{ val }}</td>
                         {% endfor %}
                         <td>
-                            <form method="POST" action="{{ url_for('apply', job_id=job[0]) }}">
-                                <button type="submit">Apply</button>
-                            </form>
+                            {% if job[0] in applied_jobs %}
+                                <span class="applied-label">Applied</span>
+                            {% else %}
+                                <form method="POST" action="{{ url_for('apply', job_id=job[0]) }}">
+                                    <button type="submit">Apply</button>
+                                </form>
+                            {% endif %}
                         </td>
                     </tr>
                 {% endfor %}
@@ -107,7 +116,7 @@
         <p>No job postings found.</p>
     {% endif %}
 
-    <a href="{{ url_for('home') }}" class="back-link">← Back to Home</a>
+    <a href="{{ url_for('studenthome') }}" class="back-link">← Back to Home</a>
 
 </body>
 </html>

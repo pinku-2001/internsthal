@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Login - Internsthal</title>
+    <title>Admin Login - Internsthal</title>
     <style>
         body {
             background-color: #f1f5f9;
@@ -52,26 +52,25 @@
             margin-bottom: 1rem;
         }
 
-        .links {
-            text-align: center;
+        .back-link {
+            display: block;
             margin-top: 1rem;
+            text-align: center;
         }
 
-        .links a {
-            display: block;
-            margin-top: 0.5rem;
+        .back-link a {
             color: #1e3a8a;
             text-decoration: none;
         }
 
-        .links a:hover {
+        .back-link a:hover {
             text-decoration: underline;
         }
     </style>
 </head>
 <body>
     <div class="login-container">
-        <h2>Student Login</h2>
+        <h2>Admin Login</h2>
 
         {% if error %}
             <div class="error">{{ error }}</div>
@@ -83,12 +82,8 @@
             <button type="submit">Log In</button>
         </form>
 
-        <div class="links">
-            <a href="{{ url_for('register') }}">New Student? Register here</a>
-            <a href="{{ url_for ('company_login')}}">Company Login</a>
-            <a href="{{ url_for('admin_login') }}">Admin Login</a>
-
-            <a href="{{ url_for('home') }}">← Back to Home</a>
+        <div class="back-link">
+            <a href="{{ url_for('login') }}">← Back to Student Login</a>
         </div>
     </div>
 </body>
