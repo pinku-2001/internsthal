@@ -473,23 +473,11 @@ def company_interviews():
             mode = request.form['mode']
 
             try:
-                cursor.execute("""
-                    INSERT INTO Interviews (
-                        InterviewID,
-                        ApplicationID,
-                        InterviewDate,
-                        InterviewMode
-                    ) VALUES (
-                        Interview_seq.NEXTVAL,
-                        :app_id,
-                        TO_TIMESTAMP(:int_dt, 'YYYY-MM-DD"T"HH24:MI'),
-                        :int_mode
-                    )
-                """, {
-                    'app_id': app_id,
-                    'int_dt': interview_dt,
-                    'int_mode': mode
-                })
+                # Convert interview_dt string to a Python datetime object
+                interview_date = datetime.strptime(interview_dt, '%Y-%m-%dT%H:%M')
+
+                # Call stored procedure instead of direct SQL
+                cursor.callproc("ScheduleInterview", [app_id, interview_date, mode])
                 conn.commit()
             except Exception as e:
                 return f"Failed to schedule interview: {str(e)}", 500
@@ -544,6 +532,7 @@ def company_interviews():
     cols = [desc[0] for desc in cursor.description]
 
     return render_template('company_interviews.html', rows=rows, cols=cols)
+
 
 
 
